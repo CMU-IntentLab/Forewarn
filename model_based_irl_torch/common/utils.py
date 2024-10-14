@@ -60,13 +60,25 @@ def get_robocasa_dataset_path_and_env_meta(
 
     # dataset_path = f"{env_id}/demo_im128_{type}_visible_arm.hdf5" 
     if config.visible_arm:
-        dataset_path = Path(config.root_dir,  f"{env_id}/demo_im128_{type}_visible_arm.hdf5")
+        dataset_path = Path(config.root_dir,  f"{env_id}/demo_im128_{type}_contrast_bg.hdf5")
     else: 
         dataset_path = Path(config.root_idr, f"{env_id}/demo_im128_{type}.hdf5")
     # dataset_path = Path(root_dir, dataset_path)
     print('dataset_path', dataset_path)
     env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path)
     return dataset_path, env_meta
+
+def get_xmagical_dataset_path_and_env_meta(
+    config,
+    env_id,
+    type = "success",
+    done_mode=0,
+):
+    assert int(done_mode) in [0, 1, 2]
+
+    dataset_path = Path(config.root_dir,  f"{env_id}_data.hdf5")
+    print('dataset_path', dataset_path)
+    return dataset_path, {}
 
 def get_robomimic_dataset_path_and_env_meta(
     env_id,

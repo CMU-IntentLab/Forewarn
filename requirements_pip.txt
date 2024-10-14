@@ -1,0 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cu118
+--index-url https://pypi.org/simple
+torch==2.3.0
+torchvision==0.18.0
+torchaudio==2.3.0
+triton==2.3.0
+vector-quantize-pytorch==1.14.7
+shapely==2.0.4
+wandb[media]
+robomimic
+opencv-python
+

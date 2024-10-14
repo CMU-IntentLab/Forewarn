@@ -20,7 +20,9 @@ from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from common.utils import get_dataset_path_and_meta_info, get_robocasa_dataset_path_and_env_meta
+from common.utils import (get_dataset_path_and_meta_info,
+                          get_robocasa_dataset_path_and_env_meta,
+                          get_xmagical_dataset_path_and_env_meta)
 import dreamer.networks as networks
 import pickle
 import wandb
@@ -393,6 +395,125 @@ def fill_expert_dataset_robocasa(config, cache, dataset_type=None, is_val_set=Fa
             )
     f.close()
     return  observation_space, action_space, norm_dict, state_dim, action_dim
+
+def fill_expert_dataset_xmagical(config, cache, dataset_type=None, is_val_set=False):
+    env_name = config.task
+    selected_obs_keys = config.obs_keys
+    if config.multi_task_data:
+        cprint("Using multitask data", color="red", attrs=["bold"])
+        cprint(
+            "Insure that the envs have the same obs_dim and ac_dim",
+            color="red",
+            attrs=["bold"],
+        )
+        # hard-coded for now
+        env_names = ["gripper", "longstick", "mediumstick", "shortstick"]
+    else:
+        env_names = [env_name]
+
+    for env_name_id, env_name in enumerate(env_names):
+
+        dataset_path, _ = get_xmagical_dataset_path_and_env_meta(
+            env_id=env_name,
+            type=dataset_type,
+            config=config,
+            done_mode=config.done_mode,
+        )
+
+        f = h5py.File(dataset_path, "r")
+
+        demos = list(f["data"].keys())
+
+        # if is_val_set, we don't fill the first num_exp_trajs which are used for training
+        config.num_exp_trajs = (
+            len(demos) if config.num_exp_trajs == -1 else config.num_exp_trajs
+        )
+        if is_val_set:
+            assert config.num_exp_trajs < len(demos), "Not enough expert data for val"
+        burn_in_trajs = config.num_exp_trajs if is_val_set else 0
+        num_fill_trajs = (
+            min(len(demos), config.num_exp_trajs + config.validation_mse_trajs)
+            if is_val_set
+            else config.num_exp_trajs
+        )
+        # obs_keys = shape_meta["obs"].keys()
+        obs_keys = f['data'][demos[0]]['obs'].keys()
+        pixel_keys = sorted([key for key in obs_keys if "image" in key and key in selected_obs_keys])
+        state_keys = config.state_keys
+
+        # Set action_space & observation_space
+        state_dim = np.prod(f["data"][demos[0]]['states'].shape[1:])
+
+        origin_shape = list(f["data"][demos[0]]["actions"].shape[1:])
+        action_space = Box(-1, 1, shape=tuple(origin_shape))
+
+        obs_space = {}
+        for key in pixel_keys:
+            obs_space[key] = Box(0, 1, shape=f["data"][demos[0]]["obs"][key].shape[1:])
+        for key in state_keys:
+            obs_space[key] = Box(-1, 1, shape=f["data"][demos[0]][key].shape[1:])
+        obs_space['is_terminal'] = Discrete(2)
+        obs_space['is_first'] = Discrete(2)
+        obs_space['is_last'] = Discrete(2)
+        obs_space['discount'] = Box(0, 1, shape=(1,))
+        obs_space['state'] = Box(-1, 1, shape=(state_dim,))
+        obs_space['privileged_state'] = Box(-1, 1, shape=(state_dim,))
+        observation_space = Dict(obs_space)
+
+        for i, demo in tqdm(
+                enumerate(demos),
+                desc="Loading in expert data",
+                ncols=0,
+                leave=False,
+                total=num_fill_trajs,
+        ):
+            if i < burn_in_trajs:
+                continue
+            elif i >= num_fill_trajs:
+                break
+
+            traj = f["data"][demo]
+
+            # Concat state keys to create "state" key
+            concat_state = []
+            for t in range(len(traj["obs"][pixel_keys[0]])):
+                curr_obs_state_vec = [traj[obs_key][t] for obs_key in state_keys]
+                curr_obs_state_vec = np.concatenate(
+                    curr_obs_state_vec, dtype=np.float32
+                )
+                concat_state.append(curr_obs_state_vec)
+
+            stacked_obs = {}
+            stacked_obs["state"] = concat_state
+
+            # transition = defaultdict(np.array)
+            length = len(traj["obs"][pixel_keys[0]])
+            cache[f'exp_traj_{i}'] = {}
+            for key in pixel_keys:
+                cache[f'exp_traj_{i}'][key] = np.array(traj["obs"][key])
+            cache[f'exp_traj_{i}']['state'] = stacked_obs["state"]
+            cache[f'exp_traj_{i}']['states'] = stacked_obs["state"]
+            cache[f'exp_traj_{i}']['privileged_state'] = np.array(stacked_obs["state"])
+            cache[f'exp_traj_{i}']['is_first'] = np.array([1] + [0] * (length - 1), dtype=np.bool_)
+            cache[f'exp_traj_{i}']['is_last'] = np.array(traj["dones"], dtype=np.bool_)
+            cache[f'exp_traj_{i}']['is_terminal'] = np.array(traj["dones"], dtype=np.bool_)
+            cache[f'exp_traj_{i}']['action'] = np.array(traj["actions"][:])
+            cache[f'exp_traj_{i}']['discount'] = np.array([1] * length, dtype=np.float32)
+
+        if not is_val_set:
+            cprint(
+                f"Loading expert buffer with {config.num_exp_trajs} trajectories from {dataset_path}",
+                color="magenta",
+                attrs=["bold"],
+            )
+        else:
+            cprint(
+                f"Loading validation buffer with {config.validation_mse_trajs} trajectories from {dataset_path}",
+                color="magenta",
+                attrs=["bold"],
+            )
+    f.close()
+    return observation_space, action_space
 
 def fill_expert_dataset(config, cache, is_val_set=False):
     if '_' in config.task:
