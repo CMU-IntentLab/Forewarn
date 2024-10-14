@@ -12,15 +12,15 @@ defaults:
   eval_every: 500
   eval_num_seeds: 50
   eval_per_seed: 1
-  log_every: 50
-  log_every_video: 500
+  log_every: 100 #50
+  log_every_video: 2000 #500
   reset_every: 0
   device: 'cuda:1'
   compile: True
   precision: 32
   debug: False
   video_pred_log: True
-  from_ckpt: null
+  from_ckpt: null #/home/yilin/Projects/failure_detection/logs/dreamer_cont/1005/005036/pretrain_joint.pt #null
   # from_ckpt: /home/kensuke/latent-safety/logs/dreamer_cont/0922/030257/best_pretrain_joint_0_36.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0921/151810/best_pretrain_joint_0_33.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0920/102553/best_pretrain_joint_0_18.pt  #/home/kensuke/latent-safety/logs/dreamer_cont/0918/110223/best_pretrain_joint_0_13.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0915/045150/best_pretrain_joint_0_14.pt
   # lx_ckpt: /home/kensuke/latent-safety/logs/dreamer_cont/0922/030257/best_classifier_0_01.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0921/151810/best_classifier_0_01.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0920/150347/best_classifier_0_03.pt #/home/kensuke/latent-safety/logs/dreamer_cont/0918/175717/classifier.pt
   from_prefill_dir: null
@@ -32,7 +32,7 @@ defaults:
   ignore_base_policy: False # if True, ignore base policy in residuals
   augment_images: False
   seed_in_batches: True
-  validation_mse_trajs: 1
+  validation_mse_trajs: 1 #10
 
   # Mixed data pretraining
   pretrain_on_random: False
@@ -40,26 +40,30 @@ defaults:
 
   # Robomimic data
   root_dir: '/home/thomas/data/robocasa'
-  visible_arm: True
+  failure_data: 'demo_im128_failure_front_wrist_view_120_1500.hdf5'
+  success_data: 'demo_im128_success_im128_front_wrist_view.hdf5'
+  visible_arm: False # True
+  contrast_bg: True
   exp_name: 'robocasa-pnpctr2sink'
   image_size: 128
   shape_rewards: True
   shift_rewards: False
   multi_task_data: False
   num_exp_trajs: 9 #90
-  obs_keys: ["robot0_agentview_left_image",
-             "robot0_agentview_right_image",
+  obs_keys: ["robot0_agentview_front_image",
+              #  "robot0_agentview_left_image",
+            #  "robot0_agentview_right_image",
             "robot0_eye_in_hand_image",]
   state_keys: #['object-state', # 28, 
                [    'robot0_eef_pos', # 3
                    'robot0_eef_quat', # 4
                      'robot0_gripper_qpos', # 2
   ]
-  priv_dim: 12
+  priv_dim: 3 #12
   # Pretraining
   pretrain_bc_loss_only: True
   pretrain_separately: False
-  pretrain_joint_steps: 40000
+  pretrain_joint_steps: 400000 #40000
   pretrain_annealing: null
   pretrain_actor_steps: 0
   pretrain_loss: 'ce'  # 'mse' or 'ce'
@@ -152,7 +156,7 @@ defaults:
 
   # Training
   batch_size: 32
-  batch_length: 32
+  batch_length: 16 #32
   train_ratio: 1024
   pretrain: 100
   model_lr: 1e-4

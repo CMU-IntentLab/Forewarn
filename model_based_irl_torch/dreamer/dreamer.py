@@ -15,7 +15,7 @@ from io import BytesIO
 from PIL import Image
 import matplotlib.patches as patches
 import io
-
+from common.ood_utils import train
 # os.environ["MUJOCO_GL"] = "osmesa"
 
 
@@ -584,7 +584,49 @@ class Dreamer(nn.Module):
         return np.array(plot), tp, fn, fp, tn
         
     ###
+    def evaluate_embed(self, data):
+        # success_data = data['success']
+        # failure_data = data['failure']
+        wm.dynamics.sample = False
+        embeddings = []
+        for key in data.keys():
+            data = wm.preprocess(data[key])
+        
+            with torch.cuda.amp.autocast(wm._use_amp):
+                embed = self._wm.encoder(data)
+                ## first plot the embedding with k_means clustering
+                ## then plot the imagined future embedding wiht k_means clustering
+                post, prior = wm.dynamics.observe(embed, data["action"], data["is_first"])
+                feat = self._wm.dynamics.get_feat(post).detach()
+                breakpoint()
+                embeddings.append(feat)
+        return embeddings[0], embeddings[1]
+            
+                    
+                    
+                    # x, y, theta = data["privileged_state"][:,:,0], data["privileged_state"][:,:,1], data["privileged_state"][:,:, 2]
 
+                    # safety_data = (x**2 + y**2) - R**2
+                    # safe_data = torch.where(safety_data > 0)
+                    # unsafe_data = torch.where(safety_data <= 0)
+
+                    # safe_dataset = feat[safe_data]
+                    # unsafe_dataset = feat[unsafe_data]
+
+                    # pos = lx_mlp(safe_dataset)
+                    # neg = lx_mlp(unsafe_dataset)
+                    
+                    
+                    # gamma = 0.75
+                    # lx_loss = (1/pos.size(0))*torch.sum(torch.relu(gamma - pos)) #penalizes safe for being positive
+                    # lx_loss +=  (1/neg.size(0))*torch.sum(torch.relu(gamma + neg)) # penalizes unsafe for being negative
+                    
+                    # lx_loss = lx_loss
+            
+                    # lx_opt(torch.mean(lx_loss), lx_mlp.parameters())
+                    # plot_arr = None
+                    # score = 0
+        
     def train_lx(self, data, lx_mlp, lx_opt, eval=False):
         wm = self._wm
         wm.dynamics.sample = False

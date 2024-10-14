@@ -283,7 +283,7 @@ def fill_expert_dataset_robocasa(config, cache, dataset_type=None, is_val_set=Fa
         obs_space['discount'] = Box(0, 1, shape = (1,))
         obs_space['object_state'] = Box(0, 1, shape = f["data"][demos[0]]["obs"]["object"].shape[1:])
         obs_space['state'] = Box(-1, 1, shape = (state_dim,))
-        obs_space['privileged_state'] = Box(-1, 1, shape = (state_dim + 3,))
+        obs_space['privileged_state'] = Box(-1, 1, shape = (3,)) #state_dim + 3
         observation_space = Dict(obs_space)
         for i, demo in tqdm(
             enumerate(demos),
@@ -348,9 +348,9 @@ def fill_expert_dataset_robocasa(config, cache, dataset_type=None, is_val_set=Fa
             # cache[f'exp_traj_{i}']['obs'] = stacked_obs
             cache[f'exp_traj_{i}']['state'] = stacked_obs["state"]
             cache[f'exp_traj_{i}']['object_state'] = np.array(traj["obs"]["object"])
-            cache[f'exp_traj_{i}']['privileged_state'] = np.concatenate(
-                [traj["obs"]["object"][:, :3], concat_state],axis=1, dtype=np.float32,
-            )
+            cache[f'exp_traj_{i}']['privileged_state'] = np.array(traj["obs"]["object"][:, :3])#np.concatenate(
+                # [traj["obs"]["object"][:, :3], concat_state],axis=1, dtype=np.float32,
+            # )
             cache[f'exp_traj_{i}']['is_first'] = np.array([1] + [0]*(length-1), dtype=np.bool_)
             cache[f'exp_traj_{i}']['is_last'] = np.array(traj["dones"], dtype=np.bool_)
             cache[f'exp_traj_{i}']['is_terminal'] = np.array(traj["dones"], dtype=np.bool_)
@@ -1799,14 +1799,20 @@ def save_checkpoint(
     items_to_save = {
         "agent_state_dict": agent.state_dict(),
         "optims_state_dict": recursively_collect_optim_state_dict(agent),
+        "global_step": step
     }
     if hasattr(agent, "ema"):
         items_to_save["ema"] = agent.ema.state_dict()
     ckpt_name_str = ckpt_name(step) if callable(ckpt_name) else ckpt_name
 
     # Always save the last model
-    torch.save(items_to_save, logdir / f"{ckpt_name_str}.pt")
-    print("Saved last model to ", logdir / f"{ckpt_name_str}.pt")
+    
+    if (step +1) % 10000 == 0:
+        torch.save(items_to_save, logdir / f"{ckpt_name_str}_{step+1}.pt")
+        print("Saved last model to ", logdir / f"{ckpt_name_str}_{step+1}.pt")
+    else:
+        torch.save(items_to_save, logdir / f"{ckpt_name_str}.pt")
+        print("Saved last model to ", logdir / f"{ckpt_name_str}.pt")
 
     # If current score is better than the best score, save the model as the best model
     if score is not None and score <= best_score:

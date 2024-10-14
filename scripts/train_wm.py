@@ -100,7 +100,15 @@ def train_eval(config):
     config.evaldir = config.evaldir or logdir / "eval_eps"
     config.traindir.mkdir(parents=True, exist_ok=True)
     config.evaldir.mkdir(parents=True, exist_ok=True)
-    step = count_steps(config.traindir)
+    # step = count_steps(config.traindir)
+    if config.from_ckpt and Path(config.from_ckpt).exists():
+        print(f"Loading ckpt from {config.from_ckpt}")
+        checkpoint = torch.load(config.from_ckpt)
+        step = checkpoint['global_step']
+    elif config.from_ckpt and not Path(config.from_ckpt).exists():
+        print(f"folder {config.from_ckpt} not exists")
+    else: 
+        step = count_steps(config.traindir)
     if config.debug:
         logger = tools.DebugLogger(logdir, config.action_repeat * step)
     else:
@@ -246,7 +254,8 @@ def train_eval(config):
     agent.requires_grad_(requires_grad=False)
     if config.from_ckpt and Path(config.from_ckpt).exists():
         print(f"Loading ckpt from {config.from_ckpt}")
-        checkpoint = torch.load(config.from_ckpt)
+        # checkpoint = torch.load(config.from_ckpt)
+        # step_so_far = checkpoint['total_step']
         if config.critic_ensemble_size > 1 or config.reward_ensemble_size > 1:
             # only false if loading with different ensemble size
             mk, uk = agent.load_state_dict(checkpoint["agent_state_dict"], strict=False)
@@ -289,7 +298,7 @@ def train_eval(config):
             print("Using EMA weights from pretraining")
             agent.ema.load_state_dict(checkpoint["ema"])
             agent.ema.copy_to(agent._task_behavior.actor.parameters())
-
+    
     # ==================== Training Fns ====================
     def log_plot(title, data):
         buf = BytesIO()
@@ -393,21 +402,28 @@ def train_eval(config):
                 episodes=1,
                 eval_prefix=eval_prefix,
             )'''
-            video_pred_success = agent._wm.video_pred(next(success_val_dataset))
-            video_pred_failure = agent._wm.video_pred(next(failure_val_dataset))
+            video_pred_success, success_loss = agent._wm.video_pred(next(success_val_dataset))
+            video_pred_failure, failure_loss = agent._wm.video_pred(next(failure_val_dataset))
             #video_pred = agent._wm.video_pred(next(expert_dataset))
             logger.video("eval_recon_success/openl_agent", to_np(video_pred_success))
             logger.video("eval_recon_failure/openl_agent", to_np(video_pred_failure))
+            for key in success_loss.keys():
+                logger.scalar(f'eval_recon_success/{key}', float(torch.mean(success_loss[key]).cpu().numpy()))
+                logger.scalar(f'eval_recon_failure/{key}', float(torch.mean(failure_loss[key]).cpu().numpy()))
             #logger.video("eval_recon/openl_hand", to_np(video_pred2))
 
             if other_dataset:
                 for i in range(len(other_dataset)):
-                    video_pred = agent._wm.video_pred(next(other_dataset[i]))
+                    video_pred, loss = agent._wm.video_pred(next(other_dataset[i]))
                     if i == 0:
                     
                         logger.video("train_recon_success/openl_agent", to_np(video_pred))
+                        for key in loss:
+                            logger.scalar(f'train_recon_success/{key}', float(torch.mean(loss[key]).cpu().numpy()))
                     else:
                         logger.video("train_recon_failure/openl_agent", to_np(video_pred))
+                        for key in loss:
+                            logger.scalar(f'train_recon_failure/{key}', float(torch.mean(loss[key]).cpu().numpy()))
                 #logger.video("train_recon/openl_hand", to_np(video_pred2))
 
         # Get stats
@@ -459,7 +475,7 @@ def train_eval(config):
             attrs=["bold"],
         )
         ckpt_name = (  # noqa: E731
-            lambda step: "pretrain_joint"
+            lambda step: f"pretrain_joint"
             if step < config.pretrain_joint_steps
             else "pretrain_actor"
         )

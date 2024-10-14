@@ -1,7 +1,8 @@
 logs/*
 wandb/*
 *.pyc
-*/__pycache__
+*/__pycache__/*
+networks/__pycache__
 __pycache__
 */logs/
 */wandb/*

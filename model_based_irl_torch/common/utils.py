@@ -59,10 +59,16 @@ def get_robocasa_dataset_path_and_env_meta(
     # root_dir = "/data/robocasa"
 
     # dataset_path = f"{env_id}/demo_im128_{type}_visible_arm.hdf5" 
-    if config.visible_arm:
-        dataset_path = Path(config.root_dir,  f"{env_id}/demo_im128_{type}_contrast_bg.hdf5")
-    else: 
-        dataset_path = Path(config.root_idr, f"{env_id}/demo_im128_{type}.hdf5")
+    # if config.visible_arm:
+    #     dataset_path = Path(config.root_dir,  f"{env_id}/demo_im128_{type}_visible_arm.hdf5")
+    # elif config.contrast_bg:
+    #     dataset_path = Path(config.root_dir,  f"{env_id}/demo_im128_{type}_im128_front_wrist_view.hdf5")
+    # else: 
+    #     dataset_path = Path(config.root_idr, f"{env_id}/demo_im128_{type}.hdf5")
+    if type == 'success':
+        dataset_path  = Path(config.root_dir, f"{env_id}/{config.success_data}")
+    elif type == 'failure':
+        dataset_path = Path(config.root_dir, f"{env_id}/{config.failure_data}")
     # dataset_path = Path(root_dir, dataset_path)
     print('dataset_path', dataset_path)
     env_meta = FileUtils.get_env_metadata_from_dataset(dataset_path=dataset_path)

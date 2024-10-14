@@ -359,12 +359,22 @@ class WorldModel(nn.Module):
 
         init = {k: v[:, -1] for k, v in states.items()}
         prior = self.dynamics.imagine_with_action(data["action"][:6, obs_steps:], init)
-        openl = torch.cat([self.heads["decoder"](self.dynamics.get_feat(prior))[key].mode() for key in image_keys], 3)
-        
+        # preds = [self.heads["decoder"](self.dynamics.get_feat(prior))[key] for key in image_keys]
+        # openl = torch.cat([self.heads["decoder"](self.dynamics.get_feat(prior))[key].mode() for key in image_keys], 3)
+        eval_loss = {}
+        openl = []
+        truth = []
+        for key in image_keys:
+            pred = self.heads["decoder"](self.dynamics.get_feat(prior))[key]
+            eval_loss[key] = -pred.log_prob(data[key][:6][:, obs_steps:])
+            openl.append(pred.mode())
+            truth.append(data[key][:6])
+        openl = torch.cat(openl, 3)
+        truth = torch.cat(truth, 3)
         
         
         #model_hand = torch.cat([recon_hand[:, :5], openl_hand], 1)
-        truth = torch.cat([data[key][:6] for key in image_keys], 3)
+        # truth = torch.cat([data[key][:6] for key in image_keys], 3)
 
         row, col = torch.where(data['is_first'][:6, obs_steps:] == 1.)
         for i in range(row.size(0)):
@@ -377,8 +387,10 @@ class WorldModel(nn.Module):
         #truth_hand = data["robot0_eye_in_hand_image"][:6]
         error = (model - truth + 1.0) / 2.0
         #error_hand = (model_hand - truth_hand + 1.0) / 2.0
+        ## record the evaluation loss here
+        
 
-        return torch.cat([truth, model, error], 2) #torch.cat(
+        return torch.cat([truth, model, error], 2), eval_loss #torch.cat(
             #[truth_hand, model_hand, error_hand], 2
         #)
 
