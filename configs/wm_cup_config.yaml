@@ -71,6 +71,8 @@ defaults:
                     'state', # 8
   ]
   action_space: [8]
+  action_type : 'abs'
+
   observation_space: {
     'cam_wrist_view_image': [64, 64,3],
     'cam_front_view_image': [64, 64,3],
@@ -99,7 +101,8 @@ defaults:
   ## classifier configs
   classifier_epoch: 50 #200
   classifier_batch_size: 32
-  classifier_batch_length: 1500 #1500
+  classifier_start_index: 35
+  classifier_batch_length: 99 ## 35 + 64
   classifier_mode: 'split' ## 'whole' or 'split'
   classifier_latent_mode: 'all' ## 'all' or 'z'
   classifier_padding_mode: 'last' ## 'zeros' or 'last'

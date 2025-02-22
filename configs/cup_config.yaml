@@ -63,7 +63,7 @@ defaults:
                     'state', # 8
   ]
   action_space: [8]
-  action_type: 'delta'
+  action_type: 'abs'
   action_norm: true
   observation_space: {
     'cam_wrist_view_image': [64, 64,3],

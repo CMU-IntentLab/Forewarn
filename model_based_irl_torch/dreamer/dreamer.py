@@ -623,9 +623,10 @@ class Dreamer(nn.Module):
     def get_latent(self, data, mode='all', imagined_steps = 0, total_steps = 1):
         self._wm.dynamics.sample = False
         data = self._wm.preprocess(data)
+        obs_step = total_steps - imagined_steps
         with torch.cuda.amp.autocast(self._wm._use_amp):
             embed = self._wm.encoder(data)
-            post, prior = self._wm.dynamics.observe(embed, data["action"], data["is_first"])
+            post, prior = self._wm.dynamics.observe(embed[:, :obs_step], data["action"][:, :obs_step], data["is_first"][:, :obs_step])
             if mode == 'all':
                 history_feat = self._wm.dynamics.get_feat(post)
             elif mode == 'z':
@@ -640,7 +641,8 @@ class Dreamer(nn.Module):
                 imagined_feat = self._wm.dynamics.get_z(prior)[:, :imagined_steps]
         feat = torch.cat([history_feat, imagined_feat], dim=1)[:,:total_steps]
         return feat
-                    
+    
+    
                     
                     # x, y, theta = data["privileged_state"][:,:,0], data["privileged_state"][:,:,1], data["privileged_state"][:,:, 2]
 
