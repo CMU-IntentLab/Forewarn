@@ -267,16 +267,23 @@ def fill_expert_dataset_real_data(config, cache, is_val_set=False, padding=None)
         ## get the dir of dataset_path
         dataset_dir = os.path.dirname(dataset_path)
         # read the norm_dict
-        with open(os.path.join(dataset_dir, f'norm_dict_{config.action_type}.json'), 'r') as file:
-            norm_dict = json.load(file)
+        if config.action_type == 'joint':
+            with open(os.path.join(dataset_dir, f'norm_dict_joint_position.json'), 'r') as file:
+                norm_dict = json.load(file)
+        else:
+            with open(os.path.join(dataset_dir, f'norm_dict_{config.action_type}.json'), 'r') as file:
+                norm_dict = json.load(file)
         ## make the values of the norm_dict to be np.array
         for key in norm_dict.keys():
             norm_dict[key] = np.array(norm_dict[key])
         
         demos = list(f["data"].keys())
         inds = np.argsort([int(elem[5:]) for elem in demos])
-        demos = [demos[i] for i in inds]
-        
+        # demos = [demos[i] for i in inds]
+        ## load ids from the file ids.npy
+        ids = np.load(os.path.join(dataset_dir, f'ids.npy'))
+        demos = [demos[i-1] for i in ids]
+      
         
         # if is_val_set, we don't fill the first num_exp_trajs which are used for training
         config.num_exp_trajs = (
@@ -339,6 +346,8 @@ def fill_expert_dataset_real_data(config, cache, is_val_set=False, padding=None)
             action_key = "actions"
         elif config.action_type == 'abs':
             action_key = "actions_abs"
+        elif config.action_type == 'joint':
+            action_key = "actions_joint_position"
         else: 
             raise ValueError('action_type should be either delta or abs')
         
@@ -1830,18 +1839,19 @@ def save_checkpoint(
     if (step +1) % 10000 == 0:
         torch.save(items_to_save, logdir / f"{ckpt_name_str}_{step+1}.pt")
         print("Saved last model to ", logdir / f"{ckpt_name_str}_{step+1}.pt")
-    else:
+    # else:
+    if step == 145000:
         torch.save(items_to_save, logdir / f"{ckpt_name_str}.pt")
         print("Saved last model to ", logdir / f"{ckpt_name_str}.pt")
 
     # If current score is better than the best score, save the model as the best model
-    if score is not None and score <= best_score:
-        best_score = score
-        best_score_str = f"{best_score:.2f}".replace(".", "_")
-        torch.save(items_to_save, logdir / f"best_{ckpt_name_str}_{best_score_str}.pt")
-        print(
-            "Saved best model to ", logdir / f"best_{ckpt_name_str}_{best_score_str}.pt"
-        )
+    # if score is not None and score <= best_score:
+    #     best_score = score
+    #     best_score_str = f"{best_score:.2f}".replace(".", "_")
+    #     torch.save(items_to_save, logdir / f"best_{ckpt_name_str}_{best_score_str}.pt")
+    #     print(
+    #         "Saved best model to ", logdir / f"best_{ckpt_name_str}_{best_score_str}.pt"
+    #     )
 
     return best_score
 

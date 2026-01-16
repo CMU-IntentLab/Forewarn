@@ -45,9 +45,11 @@ class Dreamer(nn.Module):
         self._update_count = 0
         self._dataset = dataset
         self._wm = models.WorldModel(obs_space, act_space, self._step, config)
+        # self._wm = torch.compile(self._wm)
         if (
             config.compile and os.name != "nt"
         ):  # compilation is not supported on windows
+            print("Compiling world model")
             self._wm = torch.compile(self._wm)
 
 

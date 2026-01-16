@@ -227,7 +227,8 @@ class WorldModel(nn.Module):
         print(
             f"Optimizer model_opt has {sum(param.numel() for param in self.parameters())} variables."
         )
-
+    # def forward(self, data, frozen_heads=()):
+        # return self._train(data, frozen_heads=list(frozen_heads))
     def _train(self, data, frozen_heads=[]):
         # action (batch_size, batch_length, act_dim)
         # image (batch_size, batch_length, h, w, ch)
@@ -341,7 +342,8 @@ class WorldModel(nn.Module):
                         value = np.transpose(value, (0, 1, 4, 2, 3))
                         B, T, C, H, W = value.shape
                         value = torch.Tensor(value.reshape(B*T, C, H, W))
-                        processed_value = self.transform(value.to(self._config.device))/255.0
+                        # processed_value = self.transform(value.to(self._config.device))/255.0
+                        processed_value = value.to(self._config.device)/255.0
                         obs[key] = processed_value.resize(B, T, C, self.image_size, self.image_size).permute(0, 1, 3, 4, 2)
                     else:
                         obs[key] = torch.Tensor(np.array(value)) / 255.0

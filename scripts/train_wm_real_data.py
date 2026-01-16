@@ -338,7 +338,10 @@ def train_eval(config):
                 score, success = evaluate(
                     other_dataset=all_dataset, eval_prefix="pretrain"
                 )
-           
+                tools.save_checkpoint(
+                            ckpt_name, step, success, best_pretrain_success, agent, logdir
+                        )
+            
            
 
           

@@ -19,6 +19,7 @@ HORIZONS = {
     'GraspCup': 200,
     'GraspBag':200,
     'GraspFork': 200,
+    'CupVLA': 500,
 }
 
 CORNELL_CLUSTER_ROBOMIMIC_DATASET_DIR = Path(
